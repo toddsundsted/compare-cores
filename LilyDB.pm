@@ -287,7 +287,7 @@ sub read_header {
 
     $self->{version} = $self->read_next_line();
     
-    if ($self->{version} ne "** LambdaMOO Database, Format Version 4 **") {
+    unless ($self->{version} =~ /LambdaMOO Database, Format Version [0-9]+/) {
 	print "ERROR: Unexpected DB Version: $self->{version}\n";
     }
 
