@@ -1,0 +1,14 @@
+compare-cores, version 1.2
+--------------------------
+
+This perl script parses moo database files and generates a report of
+differnece between two lily cores.  This is intended initially for us to use
+to sync up the rpi core with the devcore.
+
+The more long term goal is to build a second script that will do these
+comparisons (plus some intelligence as to what changes are normal!) to build
+patch files to upgrade any core to each new version as we release them in 
+the future.
+
+Josh Wilmes
+04/28/1999

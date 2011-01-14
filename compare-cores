@@ -1,0 +1,209 @@
+#!/usr/bin/perl
+
+use LilyDB;
+
+my $DEBUG=0;
+my %skiplist;
+init_skiplist();
+
+($core1,$core2) = @ARGV;
+
+print "START: ", `date`;
+
+$db = new LilyDB($core1,100);
+$db2 = new LilyDB($core2,100);
+compare($db,$db2,$core1,$core2);
+
+# compare against another LilyDB object.  Checks for the following
+# differences:
+# 1) objects that are only in one
+# 2) verbs/props that are only in one
+# 3) verb code/prop values that are different
+# ONLY SYSTEM OBJECTS
+my %results;
+sub compare {
+    my ($db1,$db2,$s1,$s2) = @_;
+    
+    # first, build a giant hash for each core file, in a format that's a little
+    # easier to work with for comparisons..    
+    print "\nCOMPARE: Comparing objects...\n";
+    my $h1 = buildhash($db1);
+    my $h2 = buildhash($db2);
+    my $p1 = buildparent($db1);
+    my $p2 = buildparent($db2);
+
+    hashcheck($h1,$p1,$h2,$p2,$s1,$s2);
+    hashcheck($h2,$p2,$h1,$p1,$s2,$s1);
+
+    foreach (sort { substr($a,1) <=> substr($b,1) } keys %results) {
+	print "\n";
+	print "-" x 78, "\n", "OBJECT $_:\n";
+	print $results{$_};
+    }
+
+    print "\nCOMPARE: Done comparing objects...\n";
+}
+
+my %reported;
+sub hashcheck {
+    my ($h1,$p1,$h2,$p2,$h1name,$h2name) = @_;
+    my @results;
+    $tmp1 = $h1name;
+    $tmp2 = $h2name;
+    $tmp1 =~ s:^(.*/):/tmp/lco.$$-: ;
+    $tmp2 =~ s:^(.*/):/tmp/lcn.$$-: ;
+    
+    foreach (sort keys %{$h1}) {
+	my ($oid) = /(\#\d+)/;
+	my $parentthing=$_;
+	$parentthing =~ s/$oid/#$p1->{$oid}/;
+
+        if ($reported{$parentthing}) {
+	   print "SKIPPING $_ because it was reported on in a parent\n" if $DEBUG;
+	   $reported{$_} = 1;	   
+	   next;
+	}
+
+	if (! exists($h2->{$_})) {
+	    $results{$oid} .= "$_ does not exist on $h2name\n";
+	    $reported{$_} = 1;
+	    next;
+	}
+
+	if ($h1->{$_} ne $h2->{$_} && ! $skiplist{$_}) {
+	    next if $reported{$_};
+	    $results{$oid} .= "\n$_ differs";
+	    $reported{$_} = 1;	    
+	    if ( (length($h1->{$_}) + length($h2->{$_})) < 200 ) {
+		$results{$oid} .= " (\"$h1->{$_}\" != \"$h2->{$_}\")\n";
+	    } else {
+		if ($_ =~ /\#\d+\./) {
+		    $results{$oid} .= ": [large prop difference]";
+		} else {
+		    $results{$oid} .= ":\n";
+		    open (F1,">$tmp1");
+#		    print F1 "$h1->{$_}\n";
+		    while($h1->{$_} =~ m/\G.+?(,,|\},|$)/gs ) { 
+			print F1 $&, "\n";
+		    }
+                    close(F1);
+			  
+                    open (F2,">$tmp2");
+#                   print F2 "$h2->{$_}\n";
+                    while($h2->{$_} =~ m/\G.+?(,,|\},|$)/gs ) {
+			print F2 $&, "\n";
+		    }
+		    close(F2);
+
+	            $results{$oid} .= `diff -c $tmp1 $tmp2; rm -f $tmp1 $tmp2`
+		}
+	    }
+	    next;
+	}
+    }
+
+    @results;
+}
+
+
+# comparison purposes.
+sub buildhash {
+    my ($db) = @_;
+
+    my %hash;
+
+    my $oid;
+    for $oid (0..99) {
+	next unless defined ($db->{"#$oid"});
+
+	$hash{"#$oid.name"} = $db->{"#$oid"}{name};
+	$hash{"#$oid"} = 1;
+	
+	my $prop;
+	if ($db->{"#$oid"}{props}) {
+	    foreach $prop (@{$db->{"#$oid"}{props}}) {
+	      $hash{"#$oid.$prop->{name}"} = $prop->{value};
+	  }
+	}
+
+	my $verb;
+	if ($db->{"#$oid"}{verbs}) {
+	    foreach $prop (@{$db->{"#$oid"}{verbs}}) {
+	      $hash{"#$oid:$prop->{name}"} = $prop->{code};
+	  }
+	}	
+    }
+
+    return \%hash;
+}
+
+# object hierarchies
+sub buildparent {
+    my ($db) = @_;
+
+    my %parent;
+
+    my $oid;
+    for $oid (0..99) {
+	next unless defined ($db->{"#$oid"});
+
+	$parent{"#$oid"} = $db->{"#$oid"}{parent};
+    }
+
+    return \%parent;
+}
+
+
+
+# some properties always differ between cores.
+sub init_skiplist {
+    foreach (qw(
+		#0.admin_disc
+		#0.admins
+		#0.away
+		#0.clients
+		#0.clients_free
+		#0.consulting
+		#0.detach
+		#0.disc_free
+		#0.discs
+		#0.here
+		#0.login_options
+		#0.login_state
+		#0.logins
+		#0.max_discs
+		#0.max_users
+		#0.no_votes
+		#0.players
+		#0.players_connected
+		#0.players_on
+		#0.sendmail_from
+		#0.sendmail_helo
+		#0.sendmail_host
+		#0.site_name
+		#0.system
+		#0.unos_free
+		#0.uptime
+		#0.welcome_message
+
+		#9.names
+		#9.buckets
+
+		#19.today
+		#19.tomorrow
+		#19.yesterday
+
+		#20.names
+		#20.buckets
+		
+		#24.last_input
+		#24.sites
+		
+		#25.players
+		
+
+	       )) {
+	$skiplist{$_}=1; 
+    }
+
+}
