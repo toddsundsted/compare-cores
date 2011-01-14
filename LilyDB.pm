@@ -216,20 +216,26 @@ sub read_next_num {
 sub read_next_var {
     my ($self) = @_;
 
-    my $type = $self->read_next_num(); 
+    my $type = $self->read_next_num();
     my $val;
 
     if ($type == 5 || $type == 6) { return undef; }
 
-    # lists
-    if ($type == 4) {   
+    if ($type == 4) { # lists
 	my $nelements = $self->read_next_num();
 	my @list;
 	for (1..$nelements) {
 	    push @list, $self->read_next_var();
 	}
-	$val = "{" . (join ',',@list) . "}";
-    } else {	
+	$val = "{" . (join ', ', @list) . "}";
+    } elsif ($type == 10) { # hashes
+	my $nelements = $self->read_next_num();
+	my @hash;
+	for (1..$nelements) {
+	    push @hash, $self->read_next_var() . " -> " . $self->read_next_var();
+	}
+	$val = "[" . (join ', ', @hash) . "]";
+    } else {
 	$val = $self->read_next_line();
     }
 
