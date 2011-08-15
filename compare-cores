@@ -29,8 +29,8 @@ sub compare {
     print "\nCOMPARE: Comparing objects...\n";
     my $h1 = buildhash($db1);
     my $h2 = buildhash($db2);
-    my $p1 = buildparent($db1);
-    my $p2 = buildparent($db2);
+    my $p1 = buildparents($db1);
+    my $p2 = buildparents($db2);
 
     hashcheck($h1,$p1,$h2,$p2,$s1,$s2);
     hashcheck($h2,$p2,$h1,$p1,$s2,$s1);
@@ -138,19 +138,19 @@ sub buildhash {
 }
 
 # object hierarchies
-sub buildparent {
+sub buildparents {
     my ($db) = @_;
 
-    my %parent;
+    my %parents;
 
     my $oid;
     for $oid (0..99) {
 	next unless defined ($db->{"#$oid"});
 
-	$parent{"#$oid"} = $db->{"#$oid"}{parent};
+	$parents{"#$oid"} = $db->{"#$oid"}{parents};
     }
 
-    return \%parent;
+    return \%parents;
 }
 
 

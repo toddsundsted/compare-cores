@@ -102,7 +102,7 @@ sub build_properties {
 
 	my @pd = ();
 	@pd = @{$self->{$oid}{propdefs}} if ($self->{"\#$oid"}{propdefs});
-	my @propdefs = ( $self->parent_propdefs($oid) , @pd );
+	my @propdefs = ( $self->parents_propdefs($oid) , @pd );
 
 	for (0..$#propdefs) {
 	    @{$self->{$oid}{props}}[$_]->{name} = $propdefs[$_];
@@ -147,14 +147,16 @@ sub read_next_object {
 
     print "NOTICE: Reading object: $oid\n" if $DEBUG;
 
-
-    foreach (qw(name dummy)) {
+    foreach (qw(name)) {
 	$self->{$oid}{$_}=$self->read_next_line();
     }
-    delete $self->{$oid}{dummy};
 
-    foreach (qw(flags owner location contents next parent child sibling)) {
+    foreach (qw(flags owner)) {
 	$self->{$oid}{$_}=$self->read_next_num();
+    }
+
+    foreach (qw(location contents parents children)) {
+	$self->{$oid}{$_}=$self->read_next_var();
     }
 
     my $numverbdefs = $self->read_next_num();
@@ -174,17 +176,17 @@ sub read_next_object {
     }    
 }
 
-sub parent_propdefs {
+sub parents_propdefs {
     my ($self,$oid) = @_;
     $oid =~ s/\#//g;
 
-    my $parent = $self->{"\#$oid"}{parent};
+    my $parents = $self->{"\#$oid"}{parents};
     
-    return () if ($parent eq $oid);
+    return () if ($parents eq $oid);
 
     my @propdefs = ();
     @propdefs = @{$self->{"\#$oid"}{propdefs}} if ($self->{"\#$oid"}{propdefs});
-    return ( @propdefs ,$self->parent_propdefs($parent) );
+    return ( @propdefs ,$self->parents_propdefs($parents) );
 }
 
 sub read_next_prop {
