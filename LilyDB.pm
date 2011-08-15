@@ -228,13 +228,13 @@ sub read_next_var {
 	    push @list, $self->read_next_var();
 	}
 	$val = "{" . (join ', ', @list) . "}";
-    } elsif ($type == 10) { # hashes
+    } elsif ($type == 10) { # maps
 	my $nelements = $self->read_next_num();
-	my @hash;
+	my @map;
 	for (1..$nelements) {
-	    push @hash, $self->read_next_var() . " -> " . $self->read_next_var();
+	    push @map, $self->read_next_var() . " -> " . $self->read_next_var();
 	}
-	$val = "[" . (join ', ', @hash) . "]";
+	$val = "[" . (join ', ', @map) . "]";
     } else {
 	$val = $self->read_next_line();
     }
